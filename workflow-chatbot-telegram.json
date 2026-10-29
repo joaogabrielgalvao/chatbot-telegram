@@ -157,60 +157,14 @@
     },
     {
       "parameters": {
-        "jsCode": "// Fallback deterministico: gera a mensagem final sem depender de IA.\n// Tambem e o caminho usado pela avaliacao automatica (sem credenciais Gemini).\nconst body = $input.first().json.body;\nconst chatId = $('Capturar e Formatar Cidade').first().json.chatId;\n\nconst cidade = body.name;\nconst temperatura = Math.round(Number(body.main.temp)) || 0; // evita \"-0\"\nconst condicao = (body.weather && body.weather[0] && body.weather[0].description) || '';\n\nconst message = `🌤️ A temperatura em ${cidade} é de ${temperatura}°C.`;\n\nreturn [{ json: { ok: true, chatId, cidade, temperatura, condicao, message } }];\n"
+        "jsCode": "const body = $input.first().json.body;\nconst chatId = $('Capturar e Formatar Cidade').first().json.chatId;\n\nconst temperatura = Math.round(Number(body.main.temp)) || 0;\nconst message = `🌤️ A temperatura em ${body.name} é de ${temperatura}°C.`;\n\nreturn [{ json: { chatId, message } }];\n"
       },
       "id": "092efe8b-6d7a-4d2a-bdba-d6c7c5635c1b",
-      "name": "Formatar Mensagem (Fallback)",
+      "name": "Formatar Mensagem",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         880,
-        200
-      ]
-    },
-    {
-      "parameters": {
-        "promptType": "define",
-        "text": "=Reescreva a mensagem abaixo de forma natural e amigável, em português do Brasil, em no máximo uma frase. Mantenha exatamente o nome da cidade e a temperatura em °C, e comece com o emoji 🌤️.\n\nMensagem base: {{ $json.message }}\nCidade: {{ $json.cidade }}\nTemperatura: {{ $json.temperatura }}°C\nCondição do tempo: {{ $json.condicao }}\n\nResponda SOMENTE com um JSON válido, sem markdown, no formato: {\"message\":\"...\",\"ok\":true}"
-      },
-      "id": "d95bd462-acc8-4d5d-9731-fdec58a3ecbb",
-      "name": "Gemini: Melhorar Mensagem (opcional)",
-      "type": "@n8n/n8n-nodes-langchain.chainLlm",
-      "typeVersion": 1.5,
-      "position": [
-        1100,
-        200
-      ],
-      "disabled": true,
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "modelName": "models/gemini-2.5-flash",
-        "options": {
-          "temperature": 0.1
-        }
-      },
-      "id": "ff650941-f309-40a2-be78-f079f1339cbf",
-      "name": "Google Gemini Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-      "typeVersion": 1,
-      "position": [
-        1100,
-        420
-      ],
-      "disabled": true
-    },
-    {
-      "parameters": {
-        "jsCode": "// Usa a mensagem do Gemini quando ela vier valida ({\"message\":\"...\",\"ok\":true}).\n// Caso contrario (Gemini desativado, sem credencial ou resposta invalida), usa o fallback.\nconst fallback = $('Formatar Mensagem (Fallback)').first().json;\nlet message = fallback.message;\nlet fonte = 'fallback';\n\nconst raw = $input.first().json.text;\nif (typeof raw === 'string' && raw.trim()) {\n  try {\n    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());\n    if (parsed && parsed.ok === true && typeof parsed.message === 'string' && parsed.message.trim()) {\n      message = parsed.message.trim();\n      fonte = 'gemini';\n    }\n  } catch (e) {\n    // resposta fora do formato esperado: mantem o fallback\n  }\n}\n\nreturn [{ json: { chatId: fallback.chatId, message, fonte } }];\n"
-      },
-      "id": "ebbeff67-512b-443c-8f4d-ba6cca4b0d02",
-      "name": "Selecionar Mensagem Final",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1360,
         200
       ]
     },
@@ -227,7 +181,7 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        1580,
+        1100,
         200
       ],
       "webhookId": "1967c501-a182-4f31-8501-7e42673236c0"
@@ -289,7 +243,7 @@
       "main": [
         [
           {
-            "node": "Formatar Mensagem (Fallback)",
+            "node": "Formatar Mensagem",
             "type": "main",
             "index": 0
           }
@@ -303,40 +257,7 @@
         ]
       ]
     },
-    "Formatar Mensagem (Fallback)": {
-      "main": [
-        [
-          {
-            "node": "Gemini: Melhorar Mensagem (opcional)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Gemini: Melhorar Mensagem (opcional)": {
-      "main": [
-        [
-          {
-            "node": "Selecionar Mensagem Final",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Google Gemini Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Gemini: Melhorar Mensagem (opcional)",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Selecionar Mensagem Final": {
+    "Formatar Mensagem": {
       "main": [
         [
           {
